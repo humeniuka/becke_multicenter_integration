@@ -1,0 +1,11 @@
+/build
+/dist
+/*.egg-info
+# ignore architecture dependent files
+**/*.so
+**/*.o
+**/*.pyc
+__pychache__/
+# ignore emacs backup files
+*~
+\#*\#
