@@ -8,7 +8,7 @@ basis functions using Becke's multicenter grids [1]_.
 
    - overlap (a|b)
    - kinetic energy (a|T|b)
-   - nuclear attraction energy: sum_I -Z(I) * (a|/rI|b)
+   - nuclear attraction energy: sum_I -Z(I) * (a|1/rI|b)
    - dipole operator (a|e*r|b)
    - electron repulsive integrals (ab|1/r12|cd)
 
