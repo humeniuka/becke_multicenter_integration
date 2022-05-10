@@ -282,7 +282,7 @@ class TestMulticenterIntegrals(unittest.TestCase):
         gnorm = np.sum(w * f(x,y,z))
 
         #print( "norm of Gaussian = %e" % gnorm )
-        self.assertAlmostEqual(gnorm, 1.0)
+        self.assertLess( abs(gnorm-1.0), 1.0e-3 )
 
     def test_charge_from_numerical_integration(self):
         """
