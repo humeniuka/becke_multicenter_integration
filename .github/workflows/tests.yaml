@@ -3,7 +3,7 @@ name: Unit tests for Becke integrals
 on: [push]
 
 jobs:
-  build:
+  tests:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -21,4 +21,4 @@ jobs:
           pip install -e .
       - name: Test spherical harmonics
         run: |
-          python test/test_spherical_harmonics.py
+          python tests/test_spherical_harmonics.py
