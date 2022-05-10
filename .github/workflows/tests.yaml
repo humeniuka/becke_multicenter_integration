@@ -19,6 +19,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+          cd tests
       - name: Test spherical harmonics
         run: |
-          python tests/test_spherical_harmonics.py
+          python test_spherical_harmonics.py
+      - name: Test Lebedev grids
+        run: |
+          python test_lebedev_quadrature.py
+      - name: Test multicenter integrals
+        run: |
+          python test_multicenter_integrals.py
+      - name: Test one-electron integrals
+        run: |
+          python test_integrals_1e.py

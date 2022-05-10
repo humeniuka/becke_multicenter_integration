@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 import numpy.linalg as la
 
-from becke.MulticenterIntegration import multicenter_integration, multicenter_operation, multicenter_poisson, multicenter_laplacian, multicenter_grids
+from becke.MulticenterIntegration import multicenter_integration, multicenter_operation, multicenter_poisson, multicenter_laplacian, multicenter_grids, join_grids
 from becke.MulticenterIntegration import atomlist2arrays
 from becke.ERIs import electron_repulsion
 from becke import GaussianIntegrals, GaussianBasis
