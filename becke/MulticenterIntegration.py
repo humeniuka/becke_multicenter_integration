@@ -777,7 +777,7 @@ def multicenter_laplacian_ORIGINAL(f, atomic_coordinates, atomic_numbers, lebede
                 
                 spline_lm_real, spline_lm_imag = radial_laplacians[I][(l,m)]
                 # interpolate
-                LuI_lm = interpolate.splev(zr, spline_lm_real, der=0, ext=0) \
+                LuI_lm =       interpolate.splev(zr, spline_lm_real, der=0, ext=0) \
                         + 1.0j*interpolate.splev(zr, spline_lm_imag, der=0, ext=0)
 
                 lapI_lm = LuI_lm/rI

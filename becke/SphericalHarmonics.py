@@ -104,9 +104,9 @@ def _assocLegendre_renorm_it(x):
 
 # spherical harmonics
 
-def spherical_harmonics_it(th, phi):
+def spherical_harmonics_it(theta, phi):
     """
-    th is the polar coordinate of the points on the grid [0,pi]x[0,2pi]
+    theta is the polar coordinate of the points on the grid [0,pi]x[0,2pi]
     phi is the azimuthal coordinate of the points on the grid [0,pi]x[0,2pi]
     
     Returns an iterator to the values of the spherical harmonics
@@ -119,7 +119,7 @@ def spherical_harmonics_it(th, phi):
 
     The iterator returns a tuple (Ylm, l, m)
     """
-    x = np.cos(th)
+    x = np.cos(theta)
     ap_it = _assocLegendre_renorm_it(x)
     l = 0
     while True:
@@ -136,3 +136,27 @@ def spherical_harmonics_it(th, phi):
                 yield (Yl_minus_m, l, -m)
         l += 1
 
+def spherical_harmonics_block_it(theta, phi):
+    """
+    th is the polar coordinate of the points on the grid [0,pi]x[0,2pi]
+    phi is the azimuthal coordinate of the points on the grid [0,pi]x[0,2pi]
+    
+    Returns an iterator to the values of the spherical harmonics
+    on the grid [0,pi]x[0,2pi]. The spherical harmonics are returned in blocks.
+    Each block consists of a dictionary with spherical harmonics of the same l-value,
+    where the keys are the tuples (l,m).
+    The first few blocks (l=0, l=1 and l=2) would be
+      {(0,0): Y_(0,0)}
+      {(1,0): Y_(1,0), (1,1): Y_(1,+1), (1,-1): Y_(1,-1)}
+      {(2,0): Y_(2,0), (2,1): Y_(2,+1), (2,-1): Y_(2,-1), (2,2): Y_(2,+2), (2,-2): Y_(2,-2)},
+    """
+    sph_it = spherical_harmonics_it(theta,phi)
+    # dictionary holds one l-block
+    Yl_block = {}
+    for Ylm,l,m in sph_it:
+        Yl_block[(l,m)] = Ylm
+        if (m == -l):
+            # The last spherical harmonic in an l-block is Y_{l,-l}.
+            yield Yl_block
+            # Reset the dictionary for the next block.
+            Yl_block = {}
