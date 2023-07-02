@@ -14,29 +14,29 @@ from becke.SphericalCoords import cartesian2spherical
 from becke.SphericalHarmonics import (
     spherical_harmonics_it, spherical_harmonics_block_it)
 from becke.MulticenterIntegration import (
-    number_of_radial_points, select_angular_grid, radial_difop)
+    atomlist2arrays, number_of_radial_points, select_angular_grid, radial_difop)
 
 
 class BeckeMulticenterGrid(object):
     def __init__(self,
-                 atomic_coordinates,
-                 atomic_numbers,
+                 atomlist,
                  lebedev_order=23,
                  radial_grid_factor=1):
         """
+        Create a multicenter grid for a molecule.
+
         Parameters
         ----------
-        atomic_coordinates : numpy array with shape (3,Nat), atomic_coordinates[:,i]
-                             is the cartesian position of atom i
-        atomic_numbers     : numpy array with shape (Nat)
+        atomlist           : list of tuples (Zat, (x,y,z))
+                             with molecular geometry
     
         Optional
         --------
         lebedev_order      : order Lmax of the Lebedev grid
         radial_grid_factor : the number of radial grid points is increased by this factor
         """
-        # Consistency checks
-        assert atomic_coordinates.shape == (3, len(atomic_numbers))
+        # Bring geometry data into a form understood by the module MolecularIntegrals
+        atomic_numbers, atomic_coordinates = atomlist2arrays(atomlist)
 
         # Make copies of molecular configuration.
         self._atomic_coordinates = np.copy(atomic_coordinates)
@@ -304,20 +304,17 @@ class BeckeMulticenterGrid(object):
                 radial_functions[-1][(l,m)] = spline_lm_real, spline_lm_imag
 
                 if (calculate_derivative):
-                    # coefficients from chain rule
-                    #  df/dr = df/dzr * dzr/dr
-                    dfdzr = -1.0/np.pi * np.sqrt(rm/r) * 1.0/(rm+r)
-                    zero = 0*r
-
-                    # Compute df/dr using finite differences
-                    dfIdr_lm = radial_difop(zero,dfdzr,zero, fI_lm)
+                    ones = np.ones(r.shape)
+                    zeros = np.zeros(r.shape)
+                    # Compute df/d(zr) using finite differences
+                    dfIdzr_lm = radial_difop(zeros,ones,zeros, fI_lm)
                     
-                    # Spline real and imaginary parts of d(fI_lm)/dr(r) separately
+                    # Spline real and imaginary parts of d(fI_lm)/dzr(zr) separately
                     # and store them.
-                    spline_deriv_lm_real = interpolate.splrep(zr, dfIdr_lm.real, s=0)
-                    spline_deriv_lm_imag = interpolate.splrep(zr, dfIdr_lm.imag, s=0)
+                    spline_deriv_lm_real = interpolate.splrep(zr, dfIdzr_lm.real, s=0)
+                    spline_deriv_lm_imag = interpolate.splrep(zr, dfIdzr_lm.imag, s=0)
                     radial_derivatives[-1][(l,m)] = spline_deriv_lm_real, spline_deriv_lm_imag
-
+                 
                 if (calculate_laplacian):
                     omx = 1-xr
                     opx = 1+xr
@@ -455,6 +452,11 @@ class BeckeMulticenterGrid(object):
         numerically on a multicenter spherical grid using the grid values
         of the function.
 
+        WARNING: The Voronoi partitioning creates large gradients at the boundaries
+        of different atomic regions, which would cancel exactly if there were no rounding
+        errors. However, the limited numerical precision leads to artifacts (wiggles)
+        at the Voronoi cell boundaries.
+
         Parameters
         ----------
         function_values : np.ndarray of shape (npts,)
@@ -481,13 +483,17 @@ class BeckeMulticenterGrid(object):
         #
         # where Psi_lm are the vector spherical harmonics,
         #             __
-        #  Psi    = r \/ Y    = [ m cot(th) Y     + exp(-i*ph) sqrt((l-m)*(l+m+1)) Y      ] * unit_th
-        #     l,m         l,m                l,m                                    l,m+1
+        #  Psi    = r \/ Y   
+        #     l,m         l,m
         #
-        #                       + im/sin(th) Y    * unit_ph
-        #                                     l,m
+        #     = [ cos(th) Z    + sqrt((l-m)(l+m+1)) exp(-i phi) Y      ] unit_th  +  i Z    unit_phi
+        #                  l,m                                   l,m+1                  l,m
         #
-        # and unit_r, unit_th and unit_ph are the unit vectors in spherical harmonics.
+        # with  Z_{l,m}  = -1/2 sqrt((2l+1)/(2l-1)) { sqrt((l-m)((l-1)-m)) exp(-i phi) Y_{l-1,m+1}
+        #       
+        #                                            +sqrt((l+m)((l-1)+m)) exp(+i phi) Y_{l-1,m-1} }
+        #
+        # unit_r, unit_th and unit_ph are the unit vectors in spherical harmonics.
 
         splines = self._spherical_wave_expansion(
             function_values, calculate_derivative=True)
@@ -522,24 +528,25 @@ class BeckeMulticenterGrid(object):
             rhoI[rhoI==0.0] = 1.0
 
             # precalculate trigonometric functions
-            # The point thI=0 is excluded.
-            sin_thI = np.sin(thI)
             cos_thI = np.cos(thI)
-            inv_sin_thI = 0*thI
-            inv_sin_thI[thI!=0] = 1.0/sin_thI[thI!=0]
-            cot_thI = 0*thI
-            cot_thI[thI!=0] = cos_thI[thI!=0]/sin_thI[thI!=0]
-            
-            exp_miphI = np.exp(-1j*phI)
+            # exp(i*phi)
+            exp_piphI = np.exp(1j*phI)
+            # exp(-i*phi)
+            exp_miphI = exp_piphI.conjugate()
             
             # Transform to the radial coordinates z(r) on which the interpolation
             # splines are defined.
             rm = self._slater_radii_half[I]
             xr = (rI-rm)/(rI+rm)
             zr = np.arccos(xr) / np.pi
-
+            # coefficients from chain rule
+            #  df/dr = df/dzr * dzr/dr
+            dzrdr = -1.0/np.pi * np.sqrt(rm/rI) * 1.0/(rm+rI)
+            
             # Iterate over spherical harmonics in blocks with the same l.
             sph_block_it = spherical_harmonics_block_it(thI,phI)
+            # previous block for l-1
+            Ylminus1_block = {}
             for Yl_block in sph_block_it:
                 for (l,m), Ylm in Yl_block.items():
                     # Fetch interpolation spline for the real and imaginary parts of
@@ -549,39 +556,38 @@ class BeckeMulticenterGrid(object):
                     fI_lm = (
                                  interpolate.splev(zr, spline_lm_real, der=0, ext=0) \
                         + 1.0j * interpolate.splev(zr, spline_lm_imag, der=0, ext=0))
-                    # Interpolate the derivative d(f^I_lm)/dr on the full grid.
+                    # Interpolate the derivative d(f^I_lm)/d(zr) on the full grid.
                     spline_deriv_lm_real, spline_deriv_lm_imag = radial_derivatives[I][(l,m)]
-                    dfIdr_lm = (
+                    dfIdzr_lm = (
                                  interpolate.splev(zr, spline_deriv_lm_real, der=0, ext=0) \
                         + 1.0j * interpolate.splev(zr, spline_deriv_lm_imag, der=0, ext=0))
-                    """
-                    ### DEBUG
-                    import matplotlib.pyplot as plt
-                    sort_index = np.argsort(rI)
-                    plt.plot(rI[sort_index], fI_lm[sort_index])
-                    plt.plot(rI[sort_index], dfIdr_lm[sort_index])
-                    plt.xlim(0.0, 10.0)
-                    plt.title(f"l= {l} m= {m}")
-                    plt.show()
-                    ###
-                    """
 
+                    # Apply chain rule to get
+                    #  d(f^I_lm)/dr = d(f^I_lm)/d(zr) * d(zr)/dr
+                    dfIdr_lm = dfIdzr_lm * dzrdr
+                    
                     #
                     # vector spherical harmonics
                     #
+                    Zlm = 0j*x
+                    if l > 0:
+                        if m != l and m != l-1:
+                            Zlm += np.sqrt((l-m)*((l-1)-m)) * exp_miphI * Ylminus1_block[(l-1,m+1)]
+                        if -m != l and -m != l-1:
+                            Zlm += np.sqrt((l+m)*((l-1)+m)) * exp_piphI * Ylminus1_block[(l-1,m-1)]
+                        Zlm *= -0.5 * np.sqrt((2*l+1)/(2*l-1))
+
                     # theta-component of vector spherical harmonic 
-                    Psi_lm_theta = m*cot_thI * Ylm
-                    if m < l:
-                        # Here we need the spherical harmonic Y_{l,m+1}(th,ph).
-                        Ylmp1 = Yl_block[(l,m+1)]
-                        Psi_lm_theta += np.sqrt((l-m)*(l+m+1)) * exp_miphI * Ylmp1
+                    Psi_lm_theta = cos_thI * Zlm
+                    if m != l:
+                        Psi_lm_theta += np.sqrt((l-m)*(l+m+1)) * exp_miphI * Yl_block[(l,m+1)]
                     # phi-component of vector spherical harmonic
-                    Psi_lm_phi = 1j*m * inv_sin_thI * Ylm
+                    Psi_lm_phi = 1j*Zlm
                 
                     # [r] component of gradient in the direction of the radial unit vector
                     # df^I_lm/dr Y_lm
                     grad_f_radial = dfIdr_lm * Ylm
-
+                    
                     dfdx_values += grad_f_radial * xI/rI
                     dfdy_values += grad_f_radial * yI/rI
                     dfdz_values += grad_f_radial * zI/rI
@@ -592,13 +598,16 @@ class BeckeMulticenterGrid(object):
                     dfdx_values += grad_f_theta * xI*zI/(rI*rhoI)
                     dfdy_values += grad_f_theta * yI*zI/(rI*rhoI)
                     dfdz_values += grad_f_theta * (-rhoI/rI)
-                
+
                     # [phi] component of gradient in the direction of phi unit vector
                     grad_f_phi = fI_lm/rI * Psi_lm_phi
 
                     dfdx_values += grad_f_phi * (-yI)/rhoI
                     dfdy_values += grad_f_phi *  xI/rhoI
                     # no contribution to dfdz
+
+                # Keep copy of Y_{l,m} for next iteration.
+                Ylminus1_block = Yl_block
                     
                 # Up to (including) l = (Lmax-1)/2 the integration on
                 # the Lebedev grid is exact.

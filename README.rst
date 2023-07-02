@@ -180,7 +180,7 @@ which creates an interpolation function based on the grid values.
    plt.ylabel(r"$\phi_A(r) \phi_B(r)$")
    plt.show()
 
-The integral, gradient and Laplacian of a function can be calculated directly from its
+The integral and Laplacian of a function can be calculated directly from its
 values on the multicenter grid:
 
 .. code-block:: python
@@ -190,6 +190,14 @@ values on the multicenter grid:
    laplacian_aoB_values = grid.laplacian(aoB_values)
    print("(a|T|b)= ", -0.5*grid.integrate(aoA_values * laplacian_aoB_values))
 
+The gradient operator has also been implemented, but it is not numerically stable.
+The fuzzy Voronoi partitioning creates large gradients at the boundaries
+of different atomic regions, which would cancel exactly if there were no rounding
+errors. However, the limited numerical precision leads to artifacts (wiggles)
+at the Voronoi cell boundaries. With these caveats in mind, here is an example
+on how to use the `grid.gradient` method:
+
+.. code-block:: python
    # compute gradient of orbital B on the grid. The partial derivatives
    # with respect to x,y and z are returned as separate numpy arrays.
    daoBdx_values, daoBdy_values, daoBdz_values = grid.gradient(aoB_values)
