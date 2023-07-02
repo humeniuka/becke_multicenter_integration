@@ -60,3 +60,42 @@ plt.ylabel(r"electrostatic potential")
 plt.show()
 
 
+# Operations can be performed directly on grid values.
+from becke.BeckeMulticenterGrid import BeckeMulticenterGrid
+
+grid = BeckeMulticenterGrid(atoms, radial_grid_factor=3, lebedev_order=23)
+
+# Put the orbitals onto a grid.
+aoA_values = grid.evaluate(aoA)
+aoB_values = grid.evaluate(aoB)
+
+# Product of orbitals on the grid.
+prodAB_values = aoA_values * aoB_values
+
+# Create an interpolation function prodAB(x,y,z) = aoA(x,y,z) * aoB(x,y,z)
+# for plotting.
+prodAB = grid.interpolate(prodAB_values)
+
+plt.plot(r, prodAB(0*r,0*r,r).real)
+plt.xlabel(r"z / $a_0$")
+plt.ylabel(r"$\phi_A(r) \phi_B(r)$")
+plt.show()
+
+print("(a|b)= ", grid.integrate(prodAB_values))
+
+laplacian_aoB_values = grid.laplacian(aoB_values)
+print("(a|T|b)= ", -0.5*grid.integrate(aoA_values * laplacian_aoB_values))
+
+# compute gradient of orbital B on the grid. The partial derivatives
+# with respect to x,y and z are returned as separate numpy arrays.
+daoBdx_values, daoBdy_values, daoBdz_values = grid.gradient(aoB_values)
+
+# Interpolate grid values for plotting the z-component of the gradient.
+daoBdz = grid.interpolate(daoBdz_values)
+
+plt.plot(r, daoBdz(0*r,0*r,r).real)
+plt.xlabel(r"z / $a_0$")
+plt.ylabel(r"$d\phi_B/dz$")
+plt.show()
+
+print("(a|d/dz|b)= ", grid.integrate(aoA_values * daoBdz_values))

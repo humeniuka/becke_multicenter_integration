@@ -143,7 +143,68 @@ hydrogen atom and plots the electrostatic potential along the z-axis:
    plt.ylabel(r"electrostatic potential")
    plt.show()
 
+In the above examples the inputs and outputs were functions.
+It is also possible to operate on the grid values directly.
+For this one first has to define a multicenter grid for
+a molecular configuration with the desired radial and angular resolution:
+
+.. code-block:: python
+
+   from becke.BeckeMulticenterGrid import BeckeMulticenterGrid
+
+   grid = BeckeMulticenterGrid(atoms, radial_grid_factor=3, lebedev_order=23)
+
+A function of three Cartesian coordinates, `f(x,y,z)`, can be put onto the grid with the
+`grid.evaluate(f)` method:
    
+.. code-block:: python
+
+   # Put the orbitals onto a grid.
+   aoA_values = grid.evaluate(aoA)
+   aoB_values = grid.evaluate(aoB)
+
+The returned values are one-dimensional numpy arrays.
+The inverse operation of `values = grid.evaluate(f)` is `f = grid.interpolate(values)`,
+which creates an interpolation function based on the grid values.
+
+.. code-block:: python
+
+   # Product of orbitals values on the grid.
+   prodAB_values = aoA_values * aoB_values
+   # Create an interpolation function prodAB(x,y,z) = aoA(x,y,z) * aoB(x,y,z)
+   # for plotting.
+   prodAB = grid.interpolate(prodAB_values)
+
+   plt.plot(r, prodAB(0*r,0*r,r).real)
+   plt.xlabel(r"z / $a_0$")
+   plt.ylabel(r"$\phi_A(r) \phi_B(r)$")
+   plt.show()
+
+The integral, gradient and Laplacian of a function can be calculated directly from its
+values on the multicenter grid:
+
+.. code-block:: python
+
+   print("(a|b)= ", grid.integrate(prodAB_values))
+
+   laplacian_aoB_values = grid.laplacian(aoB_values)
+   print("(a|T|b)= ", -0.5*grid.integrate(aoA_values * laplacian_aoB_values))
+
+   # compute gradient of orbital B on the grid. The partial derivatives
+   # with respect to x,y and z are returned as separate numpy arrays.
+   daoBdx_values, daoBdy_values, daoBdz_values = grid.gradient(aoB_values)
+
+   # Interpolate grid values for plotting the z-component of the gradient.
+   daoBdz = grid.interpolate(daoBdz_values)
+
+   plt.plot(r, daoBdz(0*r,0*r,r).real)
+   plt.xlabel(r"z / $a_0$")
+   plt.ylabel(r"$d\phi_B/dz$")
+   plt.show()
+
+   print("(a|d/dz|b)= ", grid.integrate(aoA_values * daoBdz_values))
+
+
 ----------
 References
 ----------
