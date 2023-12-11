@@ -20,7 +20,7 @@ with open(path.join(this_dir, 'README.rst'), encoding='utf8') as f:
     long_description = f.read()
 
 setup(
-    name='becke',
+    name='becke_multicenter_integration',
     version=get_property('__version__', 'becke'),
     description='Molecular integrals on multicenter grids (Becke\'s integration scheme)',
     long_description=long_description,
