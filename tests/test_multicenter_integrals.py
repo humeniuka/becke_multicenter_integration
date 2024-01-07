@@ -22,7 +22,7 @@ def electron_density_function(orbs_alpha, orbs_beta, nelec_alpha, nelec_beta, ba
     # overlap matrix
     S = GaussianIntegrals.basis_overlap(basis)
     electronic_charge = np.sum(S*P)
-    
+
     def density(x,y,z):
         rho = 0.0*x
         for i in range(0, basis.nbfs):

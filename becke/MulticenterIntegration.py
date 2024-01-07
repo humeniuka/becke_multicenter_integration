@@ -26,7 +26,8 @@ from becke import settings
 from becke.LebedevQuadrature import get_lebedev_grid, outerN, spherical_harmonics_it
 from becke.lebedev_quad_points import LebedevGridPoints, Lebedev_Npts, Lebedev_Lmax
 from becke.SphericalCoords import cartesian2spherical
-from becke.AtomicData import bohr_to_angs, atom_names, slater_radii
+from becke.AtomicData import bohr_to_angs, atom_names
+from becke.AtomicData import covalent_radii, slater_radii
 
 def number_of_radial_points(Z):
     """
@@ -50,6 +51,31 @@ def number_of_radial_points(Z):
         Nr += 5
         
     return Nr
+
+def atomic_radius(element):
+    """
+    Find the atomic radius that defines the distribution of radial grid points
+    on the spherical grid around an atom.
+
+    There are different definitions of the atomic radius, but not all elements are covered
+    by one definition. By default the Slater radius is used. If no Slater radius is available
+    for an element, the covalent radius is used. If the covalent radius is not defined, either,
+    the radius is set to 2.0 Bohr.
+
+    Parameters
+    ----------
+    element: lower case name of element
+
+    Returns
+    -------
+    radius: atomic radius in Bohr
+    """
+    radius = slater_radii.get(element, None)
+    if radius is None:
+        radius = covalent_radii.get(element, None)
+    if radius is None:
+        radius = 2.0
+    return radius
 
 def select_angular_grid(lebedev_order):
     """find closest Lebedev grid of requested order"""
@@ -175,7 +201,7 @@ def multicenter_integration(f, atomic_coordinates, atomic_numbers, lebedev_order
             R[j,i] = R[i,j]
 
             # ratio of Slater radii
-            chi = slater_radii[atomic_names[i]] / slater_radii[atomic_names[j]]
+            chi = atomic_radius(atomic_names[i]) / atomic_radius(atomic_names[j])
             uij = (chi-1)/(chi+1)
             a[i,j] = uij/(uij**2 - 1)
             a[j,i] = -a[i,j]
@@ -187,7 +213,7 @@ def multicenter_integration(f, atomic_coordinates, atomic_numbers, lebedev_order
         Nr = number_of_radial_points(atomic_numbers[I])
         # increase number of grid points is requested
         Nr *= radial_grid_factor
-        rm = 0.5*slater_radii[atomic_names[I]]
+        rm = 0.5*atomic_radius(atomic_names[I])
 
         k = np.array(range(1,Nr+1))
         # grid points on interval [-1,1]
@@ -317,7 +343,7 @@ def multicenter_poisson(f, atomic_coordinates, atomic_numbers, lebedev_order=23,
             R[j,i] = R[i,j]
 
             # ratio of Slater radii
-            chi = slater_radii[atomic_names[i]] / slater_radii[atomic_names[j]]
+            chi = atomic_radius(atomic_names[i]) / atomic_radius(atomic_names[j])
             uij = (chi-1)/(chi+1)
             a[i,j] = uij/(uij**2 - 1)
             a[j,i] = -a[i,j]
@@ -328,7 +354,7 @@ def multicenter_poisson(f, atomic_coordinates, atomic_numbers, lebedev_order=23,
         Nr = number_of_radial_points(atomic_numbers[I])
         # increase number of grid points is requested
         Nr *= radial_grid_factor
-        rm = 0.5*slater_radii[atomic_names[I]]
+        rm = 0.5*atomic_radius(atomic_names[I])
 
         k = np.array(range(1,Nr+1))
         # grid points on interval [-1,1]
@@ -455,7 +481,7 @@ def multicenter_poisson(f, atomic_coordinates, atomic_numbers, lebedev_order=23,
             #
             sph_it = spherical_harmonics_it(thI,phI)
 
-            rm = 0.5*slater_radii[atomic_names[I]]
+            rm = 0.5*atomic_radius(atomic_names[I])
             xr = (rI-rm)/(rI+rm)
             zr = np.arccos(xr) / np.pi
 
@@ -636,7 +662,7 @@ def multicenter_laplacian_ORIGINAL(f, atomic_coordinates, atomic_numbers, lebede
             R[j,i] = R[i,j]
 
             # ratio of Slater radii
-            chi = slater_radii[atomic_names[i]] / slater_radii[atomic_names[j]]
+            chi = atomic_radius(atomic_names[i]) / atomic_radius(atomic_names[j])
             uij = (chi-1)/(chi+1)
             a[i,j] = uij/(uij**2 - 1)
             a[j,i] = -a[i,j]
@@ -647,7 +673,7 @@ def multicenter_laplacian_ORIGINAL(f, atomic_coordinates, atomic_numbers, lebede
         Nr = number_of_radial_points(atomic_numbers[I])
         # increase number of grid points is requested
         Nr *= radial_grid_factor
-        rm = 0.5*slater_radii[atomic_names[I]]
+        rm = 0.5*atomic_radius(atomic_names[I])
 
         k = np.array(range(1,Nr+1))
         # grid points on interval [-1,1]
@@ -769,7 +795,7 @@ def multicenter_laplacian_ORIGINAL(f, atomic_coordinates, atomic_numbers, lebede
             #
             sph_it = spherical_harmonics_it(thI,phI)
 
-            rm = 0.5*slater_radii[atomic_names[I]]
+            rm = 0.5*atomic_radius(atomic_names[I])
             xr = (rI-rm)/(rI+rm)
             zr = np.arccos(xr) / np.pi
 
@@ -925,7 +951,7 @@ def multicenter_laplacian(f, atomic_coordinates, atomic_numbers,
         Nr = number_of_radial_points(atomic_numbers[I])
         # increase number of grid points is requested
         Nr *= radial_grid_factor
-        rm = 0.5*slater_radii[atomic_names[I]]
+        rm = 0.5*atomic_radius(atomic_names[I])
 
         k = np.array(range(1,Nr+1))
         # grid points on interval [-1,1]
@@ -987,7 +1013,7 @@ def multicenter_laplacian(f, atomic_coordinates, atomic_numbers,
             R[j,i] = R[i,j]
 
             # ratio of Slater radii
-            chi = slater_radii[atomic_names[i]] / slater_radii[atomic_names[j]]
+            chi = atomic_radius(atomic_names[i]) / atomic_radius(atomic_names[j])
             uij = (chi-1)/(chi+1)
             a[i,j] = uij/(uij**2 - 1)
             a[j,i] = -a[i,j]
@@ -1002,7 +1028,7 @@ def multicenter_laplacian(f, atomic_coordinates, atomic_numbers,
         Nr = number_of_radial_points(atomic_numbers[I])
         # increase number of grid points is requested
         Nr *= radial_grid_factor
-        rm = 0.5*slater_radii[atomic_names[I]]
+        rm = 0.5*atomic_radius(atomic_names[I])
 
         k = np.array(range(1,Nr+1))
         # grid points on interval [-1,1]
@@ -1058,7 +1084,7 @@ def multicenter_laplacian(f, atomic_coordinates, atomic_numbers,
                 # rJ = |r-Rj]
                 rJ = dist[:,:,j]
                 # transform to z-coordinates
-                rmJ = 0.5*slater_radii[atomic_names[j]]
+                rmJ = 0.5*atomic_radius(atomic_names[j])
                 xrJ = (rJ-rmJ)/(rJ+rmJ)
                 zrJ = np.arccos(xrJ) / np.pi
                 
@@ -1145,7 +1171,7 @@ def multicenter_laplacian(f, atomic_coordinates, atomic_numbers,
             #
             sph_it = spherical_harmonics_it(thI,phI)
 
-            rm = 0.5*slater_radii[atomic_names[I]]
+            rm = 0.5*atomic_radius(atomic_names[I])
             xr = (rI-rm)/(rI+rm)
             zr = np.arccos(xr) / np.pi
 
@@ -1294,7 +1320,7 @@ def spherical_average_func(atom, f,
     Nr = number_of_radial_points(Zat)
     # increase number of grid points is requested
     Nr *= radial_grid_factor
-    rm = 0.5*slater_radii[atom_names[Zat-1]]
+    rm = 0.5*atomic_radius(atom_names[Zat-1])
 
     k = np.array(range(1,Nr+1))
     # grid points on interval [-1,1]
@@ -1415,7 +1441,7 @@ def multicenter_operation(fs, op,
             R[j,i] = R[i,j]
 
             # ratio of Slater radii
-            chi = slater_radii[atomic_names[i]] / slater_radii[atomic_names[j]]
+            chi = atomic_radius(atomic_names[i]) / atomic_radius(atomic_names[j])
             uij = (chi-1)/(chi+1)
             a[i,j] = uij/(uij**2 - 1)
             a[j,i] = -a[i,j]
@@ -1426,7 +1452,7 @@ def multicenter_operation(fs, op,
         Nr = number_of_radial_points(atomic_numbers[I])
         # increase number of grid points is requested
         Nr *= radial_grid_factor
-        rm = 0.5*slater_radii[atomic_names[I]]
+        rm = 0.5*atomic_radius(atomic_names[I])
 
         k = np.array(range(1,Nr+1))
         # grid points on interval [-1,1]
@@ -1507,7 +1533,7 @@ def multicenter_operation(fs, op,
             #
             sph_it = spherical_harmonics_it(thI,phI)
 
-            rm = 0.5*slater_radii[atomic_names[I]]
+            rm = 0.5*atomic_radius(atomic_names[I])
             xr = (rI-rm)/(rI+rm)
             zr = np.arccos(xr) / np.pi
 
@@ -1570,7 +1596,7 @@ def radial_component_func(atom, f, l, m,
     Nr = number_of_radial_points(Zat)
     # increase number of grid points is requested
     Nr *= radial_grid_factor
-    rm = 0.5*slater_radii[atom_names[Zat-1]]
+    rm = 0.5*atomic_radius(atom_names[Zat-1])
 
     k = np.array(range(1,Nr+1))
     # grid points on interval [-1,1]
@@ -1708,7 +1734,7 @@ def multicenter_grids(atomlist,
             R[j,i] = R[i,j]
 
             # ratio of Slater radii
-            chi = slater_radii[atomic_names[i]] / slater_radii[atomic_names[j]]
+            chi = atomic_radius(atomic_names[i]) / atomic_radius(atomic_names[j])
             uij = (chi-1)/(chi+1)
             a[i,j] = uij/(uij**2 - 1)
             a[j,i] = -a[i,j]
@@ -1722,7 +1748,7 @@ def multicenter_grids(atomlist,
         Nr = number_of_radial_points(atomic_numbers[I])
         # increase number of grid points is requested
         Nr *= radial_grid_factor
-        rm = 0.5*slater_radii[atomic_names[I]]
+        rm = 0.5*atomic_radius(atomic_names[I])
 
         k = np.array(range(1,Nr+1))
         # grid points on interval [-1,1]
