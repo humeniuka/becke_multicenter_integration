@@ -2,7 +2,7 @@
 Becke's multicenter integration scheme
 """
 
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 
 __all__ = ['integral',
            'overlap', 'kinetic', 'nuclear', 'nuclear_repulsion', 'electronic_dipole',
